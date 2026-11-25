@@ -1,14 +1,18 @@
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.util.Map;
 
 public class PlateCalculatorGUI extends JFrame {
     private JTextField targetWeightField;
     private JTextField barWeightField;
     private JButton calculateButton;
     private JTextArea resultArea;
+    private PlateCalculator calculator;
 
     public PlateCalculatorGUI() {
+        calculator = new PlateCalculator();
+
         setTitle("Barbell Plate Calculator");
         setSize(400, 350);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -40,9 +44,20 @@ public class PlateCalculatorGUI extends JFrame {
         resultArea.setText("Enter your weights and click Calculate.");
         JScrollPane scrollPane = new JScrollPane(resultArea);
 
+        // Wire the Calculate button to PlateCalculator
+        calculateButton.addActionListener(e -> handleCalculate());
+
         mainPanel.add(inputPanel, BorderLayout.NORTH);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
         add(mainPanel);
+    }
+
+    private void handleCalculate() {
+        double targetWeight = Double.parseDouble(targetWeightField.getText().trim());
+        double barWeight = Double.parseDouble(barWeightField.getText().trim());
+
+        Map<Double, Integer> plates = calculator.calculatePlates(targetWeight, barWeight);
+        resultArea.setText(calculator.formatResult(plates));
     }
 }
