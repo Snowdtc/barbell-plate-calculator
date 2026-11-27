@@ -8,6 +8,9 @@ import java.util.Scanner;
 public class PlateCalculatorGUI extends JFrame {
     private static final String CONFIG_FILE = "config.txt";
 
+    private JComboBox<String> unitDropdown;
+    private JLabel targetWeightLabel;
+    private JLabel barWeightLabel;
     private JTextField targetWeightField;
     private JTextField barWeightField;
     private JButton calculateButton;
@@ -18,7 +21,7 @@ public class PlateCalculatorGUI extends JFrame {
         calculator = new PlateCalculator();
 
         setTitle("Barbell Plate Calculator");
-        setSize(400, 350);
+        setSize(420, 380);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -26,14 +29,20 @@ public class PlateCalculatorGUI extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
         mainPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
 
-        // Input panel
-        JPanel inputPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        // Input panel (4 rows now to fit Unit selector)
+        JPanel inputPanel = new JPanel(new GridLayout(4, 2, 10, 10));
 
-        inputPanel.add(new JLabel("Target Weight (lbs):"));
+        inputPanel.add(new JLabel("Unit:"));
+        unitDropdown = new JComboBox<>(new String[]{"lbs", "kg"});
+        inputPanel.add(unitDropdown);
+
+        targetWeightLabel = new JLabel("Target Weight (lbs):");
+        inputPanel.add(targetWeightLabel);
         targetWeightField = new JTextField();
         inputPanel.add(targetWeightField);
 
-        inputPanel.add(new JLabel("Bar Weight (lbs):"));
+        barWeightLabel = new JLabel("Bar Weight (lbs):");
+        inputPanel.add(barWeightLabel);
         barWeightField = new JTextField(loadDefaultBarWeight());
         inputPanel.add(barWeightField);
 
@@ -48,12 +57,34 @@ public class PlateCalculatorGUI extends JFrame {
         resultArea.setText("Enter your weights and click Calculate.");
         JScrollPane scrollPane = new JScrollPane(resultArea);
 
+        // Listeners
+        unitDropdown.addActionListener(e -> handleUnitChange());
         calculateButton.addActionListener(e -> handleCalculate());
 
         mainPanel.add(inputPanel, BorderLayout.NORTH);
         mainPanel.add(scrollPane, BorderLayout.CENTER);
 
         add(mainPanel);
+    }
+
+    private void handleUnitChange() {
+        boolean isMetric = isMetricSelected();
+        String unit = isMetric ? "kg" : "lbs";
+
+        targetWeightLabel.setText("Target Weight (" + unit + "):");
+        barWeightLabel.setText("Bar Weight (" + unit + "):");
+
+        // Automatically swap standard bar weight if currently at the other unit's default
+        String currentBar = barWeightField.getText().trim();
+        if (isMetric && currentBar.equals("45")) {
+            barWeightField.setText("20");
+        } else if (!isMetric && currentBar.equals("20")) {
+            barWeightField.setText("45");
+        }
+    }
+
+    private boolean isMetricSelected() {
+        return "kg".equals(unitDropdown.getSelectedItem());
     }
 
     private void handleCalculate() {
@@ -85,9 +116,13 @@ public class PlateCalculatorGUI extends JFrame {
             return;
         }
 
-        saveDefaultBarWeight(barWeight);
-        Map<Double, Integer> plates = calculator.calculatePlates(targetWeight, barWeight);
-        resultArea.setText(calculator.formatResult(plates));
+        boolean isMetric = isMetricSelected();
+        if (!isMetric) {
+            saveDefaultBarWeight(barWeight);
+        }
+
+        Map<Double, Integer> plates = calculator.calculatePlates(targetWeight, barWeight, isMetric);
+        resultArea.setText(calculator.formatResult(plates, isMetric));
     }
 
     private void showError(String message) {
@@ -102,11 +137,11 @@ public class PlateCalculatorGUI extends JFrame {
         try (Scanner scanner = new Scanner(file)) {
             if (scanner.hasNextLine()) {
                 String saved = scanner.nextLine().trim();
-                Double.parseDouble(saved); // Verify it's a valid number
+                Double.parseDouble(saved);
                 return saved;
             }
         } catch (Exception e) {
-            // Fall back to default if file is unreadable or corrupted
+            // Fall back to default
         }
         return "45";
     }
@@ -119,7 +154,7 @@ public class PlateCalculatorGUI extends JFrame {
                 writer.println(barWeight);
             }
         } catch (IOException e) {
-            // Non-fatal: app still works even if config can't be saved
+            // Non-fatal
         }
     }
 }
